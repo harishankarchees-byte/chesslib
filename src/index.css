@@ -6,6 +6,7 @@
 
 /* =========================================================
    QR CODE PRINTING
+   A4 - 3 columns x 4 rows
    ========================================================= */
 
 .qr-print-sheet {
@@ -15,113 +16,148 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
 
   html,
   body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 100%;
-    background: #ffffff !important;
+    background: white !important;
   }
 
+  /* Hide the normal application */
   body.printing-qr .qr-screen {
     display: none !important;
   }
 
   body.printing-qr .qr-print-sheet {
     display: grid !important;
+
+    width: 194mm;
+
     grid-template-columns: repeat(3, 1fr);
-    gap: 3mm;
-    width: 190mm;
+
+    /*
+     * IMPORTANT:
+     * Fixed row height prevents a label from being
+     * split between two pages.
+     */
+    grid-auto-rows: 62mm;
+
+    column-gap: 3mm;
+    row-gap: 3mm;
+
+    align-content: start;
+
     margin: 0 auto;
     padding: 0;
-    box-sizing: border-box;
   }
 
+  /* Every label must stay together */
   body.printing-qr .qr-print-label {
-    box-sizing: border-box;
     width: 100%;
-    min-height: 65mm;
-    padding: 3mm;
+    height: 62mm;
+
+    box-sizing: border-box;
 
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+
+    padding: 3mm 2mm;
+
+    border: 0.3mm solid #cbd5e1;
+    border-radius: 2mm;
+
+    background: white;
+
+    /*
+     * CRITICAL:
+     * Never allow this label to be broken across pages.
+     */
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+
+    overflow: hidden;
+  }
+
+  /* QR image */
+  body.printing-qr .qr-print-image {
+    width: 42mm;
+    height: 42mm;
+
+    object-fit: contain;
+
+    display: block;
+
+    flex-shrink: 0;
+
+    margin: 0 auto 1.5mm;
+  }
+
+  /* Copy code */
+  body.printing-qr .qr-print-code {
+    font-family: monospace;
+    font-size: 10pt;
+    font-weight: 700;
+    line-height: 1.1;
 
     text-align: center;
 
-    border: 0.3mm solid #d1d5db;
-    border-radius: 2mm;
-    background: #ffffff;
+    margin-top: 0;
 
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  body.printing-qr .qr-print-image {
-    display: block;
-    width: 42mm;
-    height: 42mm;
-    object-fit: contain;
-    margin: 0 auto 2mm;
-  }
-
-  body.printing-qr .qr-print-code {
-    width: 100%;
-
-    font-family:
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Monaco,
-      Consolas,
-      "Liberation Mono",
-      "Courier New",
-      monospace;
-
-    font-size: 4mm;
-    line-height: 1.15;
-    font-weight: 800;
-    color: #111827;
     white-space: nowrap;
   }
 
+  /* Book title */
   body.printing-qr .qr-print-title {
-    width: 100%;
-    margin-top: 1.2mm;
+    max-width: 100%;
 
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 2.7mm;
-    line-height: 1.15;
+    margin-top: 1mm;
+
+    font-family: Arial, sans-serif;
+    font-size: 7pt;
     font-weight: 600;
-    color: #374151;
+    line-height: 1.15;
 
-    overflow: hidden;
+    text-align: center;
 
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  body.printing-qr .qr-print-author {
-    width: 100%;
-    margin-top: 0.8mm;
-
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 2.2mm;
-    line-height: 1.1;
-    color: #6b7280;
-
-    overflow: hidden;
     white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  button,
-  a {
-    box-shadow: none !important;
+  /* Author */
+  body.printing-qr .qr-print-author {
+    max-width: 100%;
+
+    margin-top: 0.5mm;
+
+    font-family: Arial, sans-serif;
+    font-size: 6pt;
+    line-height: 1.1;
+
+    text-align: center;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /*
+   * Prevent Chromium from trying to split grid rows.
+   */
+  body.printing-qr .qr-print-label:nth-child(12n + 1) {
+    break-before: auto;
+  }
+
+  /*
+   * Keep the print sheet itself together logically.
+   */
+  body.printing-qr .qr-print-sheet {
+    break-inside: auto;
+    page-break-inside: auto;
   }
 }
