@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ScanLine, Camera, Keyboard, X, AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { ScanLine, Camera, Keyboard, X, AlertCircle, Loader2 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useRouter } from '@/lib/router';
 import { fetchCopyByCode } from '@/lib/queries';
@@ -7,62 +7,131 @@ import { fetchCopyByCode } from '@/lib/queries';
 export function ScanPage() {
   const { navigate } = useRouter();
   const [scanning, setScanning] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'camera' | 'manual'>('camera');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerId = 'qr-reader';
 
-  const stopScanner = async () => {
-    if (scannerRef.current) {
+  const stopScanner = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (scanner) {
       try {
-        const s = scannerRef.current;
-        scannerRef.current = null;
-        if (s.isScanning) {
-          await s.stop();
+        if (scanner.isScanning) {
+          await scanner.stop();
         }
-        await s.clear();
+      } catch { /* ignore */ }
+      try {
+        await scanner.clear();
       } catch { /* ignore */ }
     }
     setScanning(false);
-  };
+  }, []);
 
-  const handleDecoded = (text: string) => {
+  const handleDecoded = useCallback((text: string) => {
     let code = text.trim();
     const match = code.match(/CC-\d{5}/i);
     if (match) code = match[0];
     stopScanner().then(() => navigate(`/copy/${code.toUpperCase()}`));
-  };
+  }, [stopScanner, navigate]);
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     setError('');
+    setStarting(true);
+
+    // Wait for the DOM element to be present
+    const el = document.getElementById(containerId);
+    if (!el) {
+      setError('Scanner container not found. Try refreshing the page.');
+      setStarting(false);
+      return;
+    }
+
+    // Clean up any previous scanner instance
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch { /* ignore */ }
+      scannerRef.current = null;
+    }
+
     try {
       const scanner = new Html5Qrcode(containerId, { verbose: false });
       scannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decoded) => handleDecoded(decoded),
-        () => { /* per-frame decode error, ignore */ }
-      );
-      setScanning(true);
+
+      // Try back camera first, fall back to any camera
+      let started = false;
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decoded) => handleDecoded(decoded),
+          () => { /* per-frame decode error, ignore */ }
+        );
+        started = true;
+      } catch {
+        // Fallback: try without facingMode constraint
+        try {
+          await scanner.start(
+            { facingMode: 'user' },
+            { fps: 10, qrbox: { width: 220, height: 220 } },
+            (decoded) => handleDecoded(decoded),
+            () => { /* ignore */ }
+          );
+          started = true;
+        } catch {
+          // Final fallback: enumerate cameras and use the first one
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            await scanner.start(
+              cameras[0].id,
+              { fps: 10, qrbox: { width: 220, height: 220 } },
+              (decoded) => handleDecoded(decoded),
+              () => { /* ignore */ }
+            );
+            started = true;
+          }
+        }
+      }
+
+      if (started) {
+        setScanning(true);
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('Permission') || msg.includes('denied') || msg.includes('NotAllowed')) {
         setError('Camera permission was denied. Please allow camera access in your browser settings, or use Manual entry.');
-      } else if (msg.includes('NotFound') || msg.includes('device')) {
+      } else if (msg.includes('NotFound') || msg.includes('device') || msg.includes('No camera')) {
         setError('No camera found on this device. Use Manual entry to type a copy code.');
       } else {
         setError('Could not start camera. Try Manual entry instead.');
       }
       setScanning(false);
       scannerRef.current = null;
+    } finally {
+      setStarting(false);
     }
-  };
+  }, [handleDecoded]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => { stopScanner(); };
-  }, []);
+  }, [stopScanner]);
+
+  // Stop scanner when switching to manual mode
+  const switchToManual = () => {
+    stopScanner();
+    setMode('manual');
+    setError('');
+  };
+
+  const switchToCamera = () => {
+    setMode('camera');
+    setError('');
+  };
 
   const handleSubmitManual = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +159,7 @@ export function ScanPage() {
       {/* Mode toggle */}
       <div className="flex gap-2 rounded-lg bg-slate-100 p-1">
         <button
-          onClick={() => { setMode('camera'); setError(''); }}
+          onClick={switchToCamera}
           className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition ${
             mode === 'camera' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
           }`}
@@ -98,7 +167,7 @@ export function ScanPage() {
           <Camera size={16} /> Camera
         </button>
         <button
-          onClick={() => { stopScanner(); setMode('manual'); setError(''); }}
+          onClick={switchToManual}
           className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition ${
             mode === 'manual' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
           }`}
@@ -109,15 +178,22 @@ export function ScanPage() {
 
       {mode === 'camera' && (
         <div className="space-y-4">
+          {/* The QR reader container is ALWAYS rendered when in camera mode */}
           <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900" style={{ minHeight: '300px' }}>
-            {/* The QR reader container — only mount when scanning to avoid empty video elements */}
-            {scanning && <div id={containerId} className="w-full" />}
+            <div id={containerId} className="w-full" style={{ minHeight: '300px' }} />
 
-            {!scanning && (
-              <div className="flex h-[300px] flex-col items-center justify-center gap-3 text-slate-400">
+            {!scanning && !starting && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-400">
                 <Camera size={40} className="opacity-50" />
                 <p className="text-sm">Camera is off</p>
                 <p className="text-xs text-slate-500">Tap "Start Scanning" to begin</p>
+              </div>
+            )}
+
+            {starting && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-300">
+                <Loader2 size={32} className="animate-spin" />
+                <p className="text-sm">Starting camera…</p>
               </div>
             )}
           </div>
@@ -129,12 +205,18 @@ export function ScanPage() {
             </div>
           )}
 
-          {!scanning ? (
-            <button onClick={startScanner} className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+          {!scanning && !starting ? (
+            <button
+              onClick={startScanner}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
               <ScanLine size={18} /> Start Scanning
             </button>
           ) : (
-            <button onClick={stopScanner} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            <button
+              onClick={stopScanner}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
               <X size={18} /> Stop Camera
             </button>
           )}
