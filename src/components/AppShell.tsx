@@ -8,6 +8,7 @@ import {
   MapPin,
   BarChart3,
   Settings,
+  QrCode,
   Menu,
   X,
 } from 'lucide-react';
@@ -25,16 +26,22 @@ const NAV: NavItem[] = [
   { to: '/add', label: 'Add Book', icon: PlusCircle },
   { to: '/inventory', label: 'Inventory', icon: Package },
   { to: '/scan', label: 'Scan', icon: ScanLine },
+  { to: '/print-qr', label: 'Print QR Codes', icon: QrCode },
   { to: '/locations', label: 'Locations', icon: MapPin },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { path } = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (to: string) => (to === '/' ? path === '/' : path.startsWith(to));
+  const isActive = (to: string) =>
+    to === '/' ? path === '/' : path.startsWith(to);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -44,15 +51,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white">
             <BookOpen size={20} />
           </div>
+
           <div>
-            <div className="text-sm font-bold leading-tight text-slate-900">Chess Books</div>
-            <div className="text-[11px] text-slate-400">Inventory Manager</div>
+            <div className="text-sm font-bold leading-tight text-slate-900">
+              Chess Books
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Inventory Manager
+            </div>
           </div>
         </div>
+
         <nav className="flex-1 space-y-1 px-3 py-4">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to);
+
             return (
               <Link
                 key={item.to}
@@ -72,16 +86,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+      <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
             <BookOpen size={18} />
           </div>
-          <span className="font-bold text-slate-900">Chess Books</span>
+
+          <span className="font-bold text-slate-900">
+            Chess Books
+          </span>
         </div>
+
         <button
           onClick={() => setMobileOpen(true)}
           className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+          aria-label="Open menu"
         >
           <Menu size={22} />
         </button>
@@ -90,25 +109,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setMobileOpen(false)} />
+          <div
+            className="absolute inset-0 bg-slate-900/50"
+            onClick={() => setMobileOpen(false)}
+          />
+
           <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <span className="font-bold text-slate-900">Menu</span>
-              <button onClick={() => setMobileOpen(false)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100">
+              <span className="font-bold text-slate-900">
+                Menu
+              </span>
+
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
+                aria-label="Close menu"
+              >
                 <X size={20} />
               </button>
             </div>
+
             <nav className="space-y-1 px-3 py-4">
               {NAV.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.to);
+
                 return (
                   <Link
                     key={item.to}
                     to={item.to}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                      active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                      active
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
                     }`}
+                    onClick={() => setMobileOpen(false)}
                   >
                     <Icon size={18} />
                     {item.label}
@@ -122,7 +157,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-x-hidden pt-16 lg:pt-0">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {children}
+        </div>
       </main>
     </div>
   );
