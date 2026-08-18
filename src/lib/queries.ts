@@ -29,7 +29,7 @@ export async function fetchBook(id: string) {
 export async function fetchCopiesByBook(bookId: string) {
   const { data, error } = await supabase
     .from('book_copies')
-    .select('*, location:id(name)')
+    .select('*, location:locations(name)')
     .eq('book_id', bookId)
     .order('unique_code');
   if (error) throw error;
