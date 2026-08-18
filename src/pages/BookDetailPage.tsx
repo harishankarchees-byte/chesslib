@@ -40,6 +40,22 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // pre-generate QR data URLs for print
+  const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const QR = (await import('qrcode')).default;
+      const map: Record<string, string> = {};
+      for (const c of copies) {
+        const url = `${window.location.origin}${window.location.pathname}#/copy/${c.unique_code}`;
+        map[c.unique_code] = await QR.toDataURL(url, { width: 160, margin: 1 });
+      }
+      if (!cancelled) setQrDataUrls(map);
+    })();
+    return () => { cancelled = true; };
+  }, [copies]);
+
   if (loading) return <div className="flex h-64 items-center justify-center text-slate-400">Loading book…</div>;
   if (!book) return <div className="flex h-64 items-center justify-center text-slate-400">Book not found.</div>;
 
@@ -87,22 +103,6 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
     </style></head><body>${labels}<script>window.print();</script></body></html>`);
     w.document.close();
   };
-
-  // pre-generate QR data URLs for print
-  const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const QR = (await import('qrcode')).default;
-      const map: Record<string, string> = {};
-      for (const c of copies) {
-        const url = `${window.location.origin}${window.location.pathname}#/copy/${c.unique_code}`;
-        map[c.unique_code] = await QR.toDataURL(url, { width: 160, margin: 1 });
-      }
-      if (!cancelled) setQrDataUrls(map);
-    })();
-    return () => { cancelled = true; };
-  }, [copies]);
 
   const style = coverStyle(book.cover_color);
 
