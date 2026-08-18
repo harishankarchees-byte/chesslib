@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { fetchCopyById, fetchMovements } from '@/lib/queries';
+import { fetchCopyByCode, fetchMovements } from '@/lib/queries';
 import { useLocations } from '@/hooks/useLocations';
 import { useRouter } from '@/lib/router';
 import { LEVEL_LABELS, coverStyle } from '@/lib/constants';
