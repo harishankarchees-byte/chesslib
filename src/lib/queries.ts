@@ -29,7 +29,7 @@ export async function fetchBook(id: string) {
 export async function fetchCopiesByBook(bookId: string) {
   const { data, error } = await supabase
     .from('book_copies')
-    .select('*, location:locations(name)')
+    .select('*, location:locations!book_copies_location_id_fkey(name)')
     .eq('book_id', bookId)
     .order('unique_code');
   if (error) throw error;
@@ -39,7 +39,7 @@ export async function fetchCopiesByBook(bookId: string) {
 export async function fetchAllCopies(): Promise<CopyWithBook[]> {
   const { data, error } = await supabase
     .from('book_copies')
-    .select('*, book:book_id(id,title,author,price,level,cover_color)')
+    .select('*, book:books!book_copies_book_id_fkey(id,title,author,price,level,cover_color)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as CopyWithBook[];
@@ -48,7 +48,11 @@ export async function fetchAllCopies(): Promise<CopyWithBook[]> {
 export async function fetchCopyByCode(code: string) {
   const { data, error } = await supabase
     .from('book_copies')
-    .select('*, book:book_id(id,title,author,price,level,cover_color), location:location_id(id,name)')
+    .select(`
+      *,
+      book:books!book_copies_book_id_fkey(id,title,author,price,level,cover_color),
+      location:locations!book_copies_location_id_fkey(id,name)
+    `)
     .eq('unique_code', code.toUpperCase())
     .maybeSingle();
   if (error) throw error;
@@ -58,7 +62,11 @@ export async function fetchCopyByCode(code: string) {
 export async function fetchCopyById(id: string) {
   const { data, error } = await supabase
     .from('book_copies')
-    .select('*, book:book_id(id,title,author,price,level,cover_color), location:location_id(id,name)')
+    .select(`
+      *,
+      book:books!book_copies_book_id_fkey(id,title,author,price,level,cover_color),
+      location:locations!book_copies_location_id_fkey(id,name)
+    `)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -68,7 +76,11 @@ export async function fetchCopyById(id: string) {
 export async function fetchMovements(copyId: string) {
   const { data, error } = await supabase
     .from('inventory_movements')
-    .select('*, from_loc:from_location_id(name), to_loc:to_location_id(name)')
+    .select(`
+      *,
+      from_loc:locations!inventory_movements_from_location_id_fkey(name),
+      to_loc:locations!inventory_movements_to_location_id_fkey(name)
+    `)
     .eq('copy_id', copyId)
     .order('moved_at', { ascending: false });
   if (error) throw error;
@@ -100,7 +112,7 @@ export async function fetchDashboardStats() {
 
   const { data: copiesWithLoc } = await supabase
     .from('book_copies')
-    .select('status, location_id, book:book_id(price)');
+    .select('status, location_id, book:books!book_copies_book_id_fkey(price)');
 
   const { data: tagsData } = await supabase
     .from('book_tags')
