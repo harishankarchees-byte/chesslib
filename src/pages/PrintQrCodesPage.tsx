@@ -8,6 +8,8 @@ type Copy = Awaited<ReturnType<typeof fetchAllCopies>>[number];
 
 type QrMap = Record<string, string>;
 
+const LABELS_PER_PAGE = 12;
+
 export function PrintQrCodesPage() {
   const { navigate } = useRouter();
   const { toast } = useToast();
@@ -24,10 +26,8 @@ export function PrintQrCodesPage() {
   const [generatingQr, setGeneratingQr] = useState(false);
 
   /*
-   * Load physical copies.
+   * Load only AVAILABLE physical copies.
    *
-   * IMPORTANT:
-   * Only AVAILABLE copies are loaded for printing.
    * SOLD copies are completely excluded.
    */
   const load = useCallback(async () => {
@@ -36,14 +36,13 @@ export function PrintQrCodesPage() {
     try {
       const data = await fetchAllCopies();
 
-      // Only keep copies that are currently available.
       const availableCopies = data.filter(
         (copy) => copy.status === 'available'
       );
 
       setCopies(availableCopies);
 
-      // Initially select every available copy.
+      // Select all available copies by default.
       setSelected(
         new Set(availableCopies.map((copy) => copy.id))
       );
@@ -60,10 +59,7 @@ export function PrintQrCodesPage() {
   }, [load]);
 
   /*
-   * Unique book list.
-   *
-   * Because copies already contain only AVAILABLE copies,
-   * sold-out books/copies will not appear here.
+   * Unique books.
    */
   const books = useMemo(() => {
     const map = new Map<string, string>();
@@ -88,7 +84,7 @@ export function PrintQrCodesPage() {
   }, [copies]);
 
   /*
-   * Unique location list.
+   * Unique locations.
    */
   const locations = useMemo(() => {
     const map = new Map<string, string>();
@@ -115,8 +111,6 @@ export function PrintQrCodesPage() {
 
   /*
    * Filter copies.
-   *
-   * copies already contains ONLY available copies.
    */
   const filteredCopies = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -153,18 +147,21 @@ export function PrintQrCodesPage() {
         locationFilter === 'all' ||
         location?.id === locationFilter;
 
-      return matchesSearch && matchesBook && matchesLocation;
+      return (
+        matchesSearch &&
+        matchesBook &&
+        matchesLocation
+      );
     });
-  }, [copies, search, bookFilter, locationFilter]);
+  }, [
+    copies,
+    search,
+    bookFilter,
+    locationFilter,
+  ]);
 
   /*
    * Generate QR images.
-   *
-   * Every QR points to:
-   *
-   * #/copy/CC-00001
-   *
-   * This matches the working CopyDetailPage flow.
    */
   useEffect(() => {
     let cancelled = false;
@@ -187,7 +184,9 @@ export function PrintQrCodesPage() {
           const url =
             `${window.location.origin}` +
             `${window.location.pathname}` +
-            `#/copy/${encodeURIComponent(copy.unique_code)}`;
+            `#/copy/${encodeURIComponent(
+              copy.unique_code
+            )}`;
 
           map[copy.id] = await QR.toDataURL(url, {
             width: 300,
@@ -222,13 +221,15 @@ export function PrintQrCodesPage() {
   /*
    * Selection helpers.
    */
-  const selectedFilteredCopies = filteredCopies.filter((copy) =>
-    selected.has(copy.id)
+  const selectedFilteredCopies = filteredCopies.filter(
+    (copy) => selected.has(copy.id)
   );
 
   const allFilteredSelected =
     filteredCopies.length > 0 &&
-    filteredCopies.every((copy) => selected.has(copy.id));
+    filteredCopies.every((copy) =>
+      selected.has(copy.id)
+    );
 
   const toggleCopy = (id: string) => {
     setSelected((previous) => {
@@ -263,7 +264,9 @@ export function PrintQrCodesPage() {
   };
 
   const selectAll = () => {
-    setSelected(new Set(copies.map((copy) => copy.id)));
+    setSelected(
+      new Set(copies.map((copy) => copy.id))
+    );
   };
 
   const clearAll = () => {
@@ -271,15 +274,51 @@ export function PrintQrCodesPage() {
   };
 
   /*
-   * Print only selected AVAILABLE copies.
+   * The exact copies that will be printed.
+   *
+   * IMPORTANT:
+   * We use the selected AVAILABLE copies only.
+   */
+  const printableCopies = useMemo(() => {
+    return copies.filter(
+      (copy) => selected.has(copy.id)
+    );
+  }, [copies, selected]);
+
+  /*
+   * Split printable copies into groups of exactly
+   * 12 labels.
+   *
+   * Example:
+   *
+   * 12 copies = 1 page
+   * 13 copies = 2 pages
+   * 24 copies = 2 pages
+   * 25 copies = 3 pages
+   */
+  const printPages = useMemo(() => {
+    const pages: Copy[][] = [];
+
+    for (
+      let i = 0;
+      i < printableCopies.length;
+      i += LABELS_PER_PAGE
+    ) {
+      pages.push(
+        printableCopies.slice(
+          i,
+          i + LABELS_PER_PAGE
+        )
+      );
+    }
+
+    return pages;
+  }, [printableCopies]);
+
+  /*
+   * Print.
    */
   const printSelected = () => {
-    const printableCopies = copies.filter(
-      (copy) =>
-        copy.status === 'available' &&
-        selected.has(copy.id)
-    );
-
     if (printableCopies.length === 0) {
       toast('Select at least one available QR code');
       return;
@@ -290,12 +329,15 @@ export function PrintQrCodesPage() {
     );
 
     if (missingQr) {
-      toast('QR codes are still generating. Please wait.');
+      toast(
+        'QR codes are still generating. Please wait.'
+      );
       return;
     }
 
     /*
-     * Make the selected labels visible for printing.
+     * Wait briefly so the print-only DOM is fully
+     * rendered before opening the print dialog.
      */
     document.body.classList.add('printing-qr');
 
@@ -303,12 +345,14 @@ export function PrintQrCodesPage() {
       window.print();
 
       /*
-       * Give the browser a moment to finish print preparation.
+       * Remove print state after printing.
        */
       setTimeout(() => {
-        document.body.classList.remove('printing-qr');
-      }, 500);
-    }, 100);
+        document.body.classList.remove(
+          'printing-qr'
+        );
+      }, 1000);
+    }, 200);
   };
 
   if (loading) {
@@ -321,10 +365,12 @@ export function PrintQrCodesPage() {
 
   return (
     <>
-      {/* ============================
+      {/* =====================================================
           NORMAL SCREEN UI
-      ============================= */}
+          ===================================================== */}
+
       <div className="qr-screen mx-auto max-w-6xl space-y-6">
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -341,7 +387,8 @@ export function PrintQrCodesPage() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Print QR labels for available physical book copies.
+              Print QR labels for available physical
+              book copies.
             </p>
           </div>
 
@@ -357,7 +404,9 @@ export function PrintQrCodesPage() {
 
             {generatingQr
               ? 'Generating QR Codes…'
-              : `Print ${selectedFilteredCopies.length} QR${
+              : `Print ${
+                  selectedFilteredCopies.length
+                } QR${
                   selectedFilteredCopies.length === 1
                     ? ''
                     : ' Codes'
@@ -367,6 +416,7 @@ export function PrintQrCodesPage() {
 
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="text-2xl font-bold text-slate-900">
               {copies.length}
@@ -406,11 +456,14 @@ export function PrintQrCodesPage() {
               QR Ready
             </div>
           </div>
+
         </div>
 
         {/* Filters */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
           <div className="grid gap-3 md:grid-cols-3">
+
             {/* Search */}
             <div className="relative">
               <Search
@@ -421,7 +474,9 @@ export function PrintQrCodesPage() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
                 placeholder="Search code, book, author…"
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-slate-400"
               />
@@ -430,10 +485,14 @@ export function PrintQrCodesPage() {
             {/* Book */}
             <select
               value={bookFilter}
-              onChange={(e) => setBookFilter(e.target.value)}
+              onChange={(e) =>
+                setBookFilter(e.target.value)
+              }
               className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
             >
-              <option value="all">All Available Books</option>
+              <option value="all">
+                All Available Books
+              </option>
 
               {books.map(([id, title]) => (
                 <option key={id} value={id}>
@@ -445,10 +504,14 @@ export function PrintQrCodesPage() {
             {/* Location */}
             <select
               value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
+              onChange={(e) =>
+                setLocationFilter(e.target.value)
+              }
               className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
             >
-              <option value="all">All Locations</option>
+              <option value="all">
+                All Locations
+              </option>
 
               {locations.map(([id, name]) => (
                 <option key={id} value={id}>
@@ -456,10 +519,12 @@ export function PrintQrCodesPage() {
                 </option>
               ))}
             </select>
+
           </div>
 
           {/* Selection controls */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+
             <button
               onClick={toggleAllFiltered}
               className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900"
@@ -476,6 +541,7 @@ export function PrintQrCodesPage() {
             </button>
 
             <div className="flex gap-2">
+
               <button
                 onClick={selectAll}
                 className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
@@ -489,13 +555,16 @@ export function PrintQrCodesPage() {
               >
                 Clear All
               </button>
+
             </div>
           </div>
         </div>
 
         {/* Copy list */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+
           <div className="border-b border-slate-100 px-5 py-4">
+
             <h2 className="font-semibold text-slate-900">
               Available Book Copies
             </h2>
@@ -503,6 +572,7 @@ export function PrintQrCodesPage() {
             <p className="mt-1 text-xs text-slate-500">
               Sold copies are automatically excluded.
             </p>
+
           </div>
 
           {filteredCopies.length === 0 ? (
@@ -511,14 +581,13 @@ export function PrintQrCodesPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
+
               {filteredCopies.map((copy) => {
+
                 const book = copy.book as {
                   id: string;
                   title: string;
                   author: string | null;
-                  price: number;
-                  level: string;
-                  cover_color: string | null;
                 };
 
                 const location = (
@@ -530,19 +599,23 @@ export function PrintQrCodesPage() {
                   }
                 ).location;
 
-                const isSelected = selected.has(copy.id);
+                const isSelected =
+                  selected.has(copy.id);
 
                 return (
                   <button
                     key={copy.id}
                     type="button"
-                    onClick={() => toggleCopy(copy.id)}
+                    onClick={() =>
+                      toggleCopy(copy.id)
+                    }
                     className={`flex w-full items-center gap-4 px-5 py-4 text-left transition ${
                       isSelected
                         ? 'bg-slate-50'
                         : 'bg-white hover:bg-slate-50'
                     }`}
                   >
+
                     {/* Checkbox */}
                     <div
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
@@ -551,11 +624,14 @@ export function PrintQrCodesPage() {
                           : 'border-slate-300 bg-white'
                       }`}
                     >
-                      {isSelected && <Check size={14} />}
+                      {isSelected && (
+                        <Check size={14} />
+                      )}
                     </div>
 
                     {/* QR preview */}
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-white">
+
                       {qrDataUrls[copy.id] ? (
                         <img
                           src={qrDataUrls[copy.id]}
@@ -567,26 +643,34 @@ export function PrintQrCodesPage() {
                           QR…
                         </span>
                       )}
+
                     </div>
 
                     {/* Details */}
                     <div className="min-w-0 flex-1">
+
                       <div className="font-mono text-sm font-bold text-slate-900">
                         {copy.unique_code}
                       </div>
 
                       <div className="truncate text-sm font-medium text-slate-700">
-                        {book?.title || 'Unknown book'}
+                        {book?.title ||
+                          'Unknown book'}
                       </div>
 
                       <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-400">
+
                         {book?.author && (
-                          <span>{book.author}</span>
+                          <span>
+                            {book.author}
+                          </span>
                         )}
 
                         <span>
-                          {location?.name || 'No location'}
+                          {location?.name ||
+                            'No location'}
                         </span>
+
                       </div>
                     </div>
 
@@ -594,71 +678,104 @@ export function PrintQrCodesPage() {
                     <span className="hidden rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 sm:inline-flex">
                       Available
                     </span>
+
                   </button>
                 );
               })}
+
             </div>
           )}
         </div>
 
         {/* Print information */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+
           <strong className="text-slate-800">
             Printing:
           </strong>{' '}
-          A4 paper, 12 labels per page (3 columns × 4 rows).
-          Sold copies are not included. Each QR code contains the
-          unique copy URL, for example{' '}
-          <span className="font-mono font-semibold">
-            CC-00001
-          </span>
-          .
+
+          A4 paper, exactly 12 labels per page
+          (3 columns × 4 rows).
+
+          Sold copies are not included.
+
         </div>
+
       </div>
 
-      {/* ============================
+      {/* =====================================================
           PRINT-ONLY UI
-      ============================= */}
-      <div className="qr-print-sheet" aria-hidden="true">
-        {copies
-          .filter(
-            (copy) =>
-              copy.status === 'available' &&
-              selected.has(copy.id)
-          )
-          .map((copy) => {
-            const book = copy.book as {
-              title: string;
-              author: string | null;
-            };
 
-            return (
-              <div
-                key={copy.id}
-                className="qr-print-label"
-              >
-                <img
-                  src={qrDataUrls[copy.id] || ''}
-                  alt=""
-                  className="qr-print-image"
-                />
+          IMPORTANT:
+          We explicitly create separate A4 pages.
+          Every page contains MAXIMUM 12 labels.
+          ===================================================== */}
 
-                <div className="qr-print-code">
-                  {copy.unique_code}
-                </div>
+      <div
+        className="qr-print-container"
+        aria-hidden="true"
+      >
 
-                <div className="qr-print-title">
-                  {book?.title || 'Book'}
-                </div>
+        {printPages.map((pageCopies, pageIndex) => (
 
-                {book?.author && (
-                  <div className="qr-print-author">
-                    {book.author}
+          <section
+            key={`print-page-${pageIndex}`}
+            className="qr-print-page"
+          >
+
+            {/* Page heading */}
+            <div className="qr-print-page-title">
+              Chess Books
+            </div>
+
+            {/* Exactly one 3 × 4 grid */}
+            <div className="qr-print-grid">
+
+              {pageCopies.map((copy) => {
+
+                const book = copy.book as {
+                  title: string;
+                  author: string | null;
+                };
+
+                return (
+                  <div
+                    key={copy.id}
+                    className="qr-print-label"
+                  >
+
+                    <img
+                      src={
+                        qrDataUrls[copy.id] || ''
+                      }
+                      alt=""
+                      className="qr-print-image"
+                    />
+
+                    <div className="qr-print-code">
+                      {copy.unique_code}
+                    </div>
+
+                    <div className="qr-print-title">
+                      {book?.title || 'Book'}
+                    </div>
+
+                    {book?.author && (
+                      <div className="qr-print-author">
+                        {book.author}
+                      </div>
+                    )}
+
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+
+            </div>
+
+          </section>
+
+        ))}
+
       </div>
     </>
   );
