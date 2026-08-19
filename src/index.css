@@ -5,22 +5,22 @@
 
 
 /* =========================================================
-   QR CODE PRINTING
-   A4 PORTRAIT
-   12 LABELS PER PAGE
-   3 COLUMNS × 4 ROWS
-
-   IMPORTANT:
-   Each .qr-print-page is ONE physical A4 page.
+   QR PRINT SCREEN
    ========================================================= */
 
 .qr-print-container {
   display: none;
 }
 
+
+/* =========================================================
+   PRINT
+   ========================================================= */
+
 @media print {
+
   /* -------------------------------------------------------
-     PAGE
+     A4
      ------------------------------------------------------- */
 
   @page {
@@ -28,39 +28,33 @@
     margin: 0;
   }
 
+
+  /* -------------------------------------------------------
+     BODY
+     ------------------------------------------------------- */
+
   html,
   body {
-    width: 210mm !important;
-    height: auto !important;
-
     margin: 0 !important;
     padding: 0 !important;
+
+    width: 210mm !important;
 
     background: white !important;
   }
 
-  body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
 
-  /* Hide normal application UI */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Show ONLY QR printing */
-  .qr-print-container,
-  .qr-print-container * {
-    visibility: visible !important;
-  }
+  /* -------------------------------------------------------
+     HIDE NORMAL QR PAGE UI
+     ------------------------------------------------------- */
 
   .qr-screen {
     display: none !important;
   }
 
+
   /* -------------------------------------------------------
-     PRINT CONTAINER
+     SHOW PRINT CONTAINER
      ------------------------------------------------------- */
 
   .qr-print-container {
@@ -70,43 +64,46 @@
 
     margin: 0 !important;
     padding: 0 !important;
+
+    background: white !important;
   }
 
+
   /* -------------------------------------------------------
-     ONE A4 PAGE
+     EACH PAGE = ONE A4 SHEET
      ------------------------------------------------------- */
 
   .qr-print-page {
+    display: block !important;
+
     width: 210mm !important;
     height: 297mm !important;
 
     box-sizing: border-box !important;
 
-    padding: 7mm 7mm 7mm 7mm !important;
-
     margin: 0 !important;
+    padding: 7mm !important;
 
     background: white !important;
 
     overflow: hidden !important;
 
-    /* CRITICAL */
-    page-break-before: auto !important;
     page-break-after: always !important;
-    page-break-inside: avoid !important;
-
-    break-before: auto !important;
     break-after: page !important;
+
+    page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
+
 
   .qr-print-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
   }
 
+
   /* -------------------------------------------------------
-     PAGE TITLE
+     PAGE HEADER
      ------------------------------------------------------- */
 
   .qr-print-page-title {
@@ -119,43 +116,27 @@
     display: flex !important;
     align-items: center !important;
 
-    padding: 0 1mm !important;
     margin: 0 0 3mm 0 !important;
+    padding: 0 1mm !important;
 
     border-bottom: 0.25mm solid #d1d5db !important;
 
     font-family: Arial, Helvetica, sans-serif !important;
 
     font-size: 12px !important;
-    line-height: 14px !important;
 
     font-weight: 700 !important;
 
     color: #111827 !important;
   }
 
+
   /* -------------------------------------------------------
-     3 × 4 GRID
-     
-     Available width:
-     210 - 14 = 196mm
-
-     3 columns:
-     63.33mm each
-
-     Available height:
-     297 - 14 padding - 10 title - 3 gap
-     = 270mm
-
-     Four rows of 64mm + 3 × 3mm gaps
-     = 265mm
-
-     Therefore there is safety space at the bottom.
+     3 COLUMNS × 4 ROWS
      ------------------------------------------------------- */
 
   .qr-print-grid {
     width: 196mm !important;
-
     height: 265mm !important;
 
     box-sizing: border-box !important;
@@ -178,8 +159,9 @@
     break-inside: avoid !important;
   }
 
+
   /* -------------------------------------------------------
-     INDIVIDUAL LABEL
+     LABEL
      ------------------------------------------------------- */
 
   .qr-print-label {
@@ -196,9 +178,8 @@
 
     justify-content: flex-start !important;
 
-    padding: 2mm !important;
-
     margin: 0 !important;
+    padding: 2mm !important;
 
     border: 0.25mm solid #cbd5e1 !important;
 
@@ -212,11 +193,9 @@
     break-inside: avoid !important;
   }
 
-  /* -------------------------------------------------------
-     QR IMAGE
 
-     Slightly smaller than before so there is guaranteed
-     room for the code/title/author underneath.
+  /* -------------------------------------------------------
+     QR
      ------------------------------------------------------- */
 
   .qr-print-image {
@@ -225,9 +204,6 @@
     width: 46mm !important;
     height: 46mm !important;
 
-    min-width: 46mm !important;
-    min-height: 46mm !important;
-
     max-width: 46mm !important;
     max-height: 46mm !important;
 
@@ -235,10 +211,9 @@
 
     margin: 0 auto 1mm auto !important;
 
-    padding: 0 !important;
-
-    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
   }
+
 
   /* -------------------------------------------------------
      COPY CODE
@@ -250,7 +225,6 @@
     height: 4mm !important;
 
     margin: 0 !important;
-    padding: 0 !important;
 
     text-align: center !important;
 
@@ -272,6 +246,7 @@
     overflow: hidden !important;
   }
 
+
   /* -------------------------------------------------------
      BOOK TITLE
      ------------------------------------------------------- */
@@ -282,11 +257,13 @@
     height: 4mm !important;
 
     margin: 0.5mm 0 0 0 !important;
-    padding: 0 !important;
 
     text-align: center !important;
 
-    font-family: Arial, Helvetica, sans-serif !important;
+    font-family:
+      Arial,
+      Helvetica,
+      sans-serif !important;
 
     font-size: 6.5px !important;
 
@@ -303,6 +280,7 @@
     text-overflow: ellipsis !important;
   }
 
+
   /* -------------------------------------------------------
      AUTHOR
      ------------------------------------------------------- */
@@ -313,11 +291,13 @@
     height: 3mm !important;
 
     margin: 0.2mm 0 0 0 !important;
-    padding: 0 !important;
 
     text-align: center !important;
 
-    font-family: Arial, Helvetica, sans-serif !important;
+    font-family:
+      Arial,
+      Helvetica,
+      sans-serif !important;
 
     font-size: 5.5px !important;
 
@@ -332,8 +312,9 @@
     text-overflow: ellipsis !important;
   }
 
+
   /* -------------------------------------------------------
-     EXTRA SAFETY
+     NEVER SPLIT
      ------------------------------------------------------- */
 
   .qr-print-page,
