@@ -5,86 +5,80 @@
 
 
 /* =========================================================
-   QR PRINT SCREEN
+   QR CODE PRINTING
+   EXACT A4
+   EXACTLY 12 LABELS PER PAGE
+   3 COLUMNS × 4 ROWS
    ========================================================= */
 
 .qr-print-container {
   display: none;
 }
 
-
-/* =========================================================
-   PRINT
-   ========================================================= */
-
 @media print {
-
-  /* -------------------------------------------------------
-     A4
-     ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     A4 PAGE
+     --------------------------------------------------------- */
 
   @page {
     size: A4 portrait;
     margin: 0;
   }
 
-
-  /* -------------------------------------------------------
-     BODY
-     ------------------------------------------------------- */
-
   html,
   body {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Hide the application completely */
+  body > * {
+    visibility: hidden !important;
+  }
+
+  /* Show ONLY our print container */
+  .qr-print-container {
+    visibility: visible !important;
+    display: block !important;
+
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+
+    width: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
 
-    width: 210mm !important;
-
-    background: white !important;
+    background: #fff !important;
   }
 
+  .qr-print-container * {
+    visibility: visible !important;
+  }
 
-  /* -------------------------------------------------------
-     HIDE NORMAL QR PAGE UI
-     ------------------------------------------------------- */
-
+  /* Never print normal application UI */
   .qr-screen {
     display: none !important;
   }
 
-
-  /* -------------------------------------------------------
-     SHOW PRINT CONTAINER
-     ------------------------------------------------------- */
-
-  .qr-print-container {
-    display: block !important;
-
-    width: 210mm !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-
-    background: white !important;
-  }
-
-
-  /* -------------------------------------------------------
-     EACH PAGE = ONE A4 SHEET
-     ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     EACH PAGE = EXACTLY ONE A4 SHEET
+     --------------------------------------------------------- */
 
   .qr-print-page {
-    display: block !important;
-
     width: 210mm !important;
     height: 297mm !important;
 
     box-sizing: border-box !important;
 
-    margin: 0 !important;
-    padding: 7mm !important;
+    padding: 7mm 8mm !important;
 
-    background: white !important;
+    margin: 0 !important;
+
+    background: #fff !important;
 
     overflow: hidden !important;
 
@@ -95,20 +89,17 @@
     break-inside: avoid !important;
   }
 
-
   .qr-print-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
   }
 
-
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      PAGE HEADER
-     ------------------------------------------------------- */
+     --------------------------------------------------------- */
 
   .qr-print-page-title {
-    width: 196mm !important;
-
+    width: 194mm !important;
     height: 10mm !important;
 
     box-sizing: border-box !important;
@@ -116,30 +107,48 @@
     display: flex !important;
     align-items: center !important;
 
+    padding: 0 2mm !important;
     margin: 0 0 3mm 0 !important;
-    padding: 0 1mm !important;
-
-    border-bottom: 0.25mm solid #d1d5db !important;
 
     font-family: Arial, Helvetica, sans-serif !important;
-
     font-size: 12px !important;
-
     font-weight: 700 !important;
 
     color: #111827 !important;
+
+    border-bottom: 0.25mm solid #d1d5db !important;
   }
 
+  /* ---------------------------------------------------------
+     EXACT 3 × 4 GRID
+     
+     Available width:
+       194mm
 
-  /* -------------------------------------------------------
-     3 COLUMNS × 4 ROWS
-     ------------------------------------------------------- */
+     3 columns:
+       (194 - 2×3) / 3
+       = 62.666mm
+
+     4 rows:
+       58mm each
+
+     Total:
+       4×58 + 3×3 = 241mm
+
+     Header + margins:
+       10 + 3 = 13mm
+
+     Page padding:
+       7 + 7 = 14mm
+
+     Total used:
+       13 + 241 + 14 = 268mm
+
+     This deliberately leaves plenty of bottom safety space.
+     --------------------------------------------------------- */
 
   .qr-print-grid {
-    width: 196mm !important;
-    height: 265mm !important;
-
-    box-sizing: border-box !important;
+    width: 194mm !important;
 
     display: grid !important;
 
@@ -147,10 +156,12 @@
       repeat(3, 1fr) !important;
 
     grid-template-rows:
-      repeat(4, 64mm) !important;
+      repeat(4, 58mm) !important;
 
     column-gap: 3mm !important;
     row-gap: 3mm !important;
+
+    box-sizing: border-box !important;
 
     margin: 0 !important;
     padding: 0 !important;
@@ -159,33 +170,32 @@
     break-inside: avoid !important;
   }
 
-
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      LABEL
-     ------------------------------------------------------- */
+     --------------------------------------------------------- */
 
   .qr-print-label {
     width: 100% !important;
-    height: 64mm !important;
+    height: 58mm !important;
+
+    min-width: 0 !important;
+    min-height: 58mm !important;
 
     box-sizing: border-box !important;
 
     display: flex !important;
-
     flex-direction: column !important;
-
     align-items: center !important;
-
     justify-content: flex-start !important;
 
-    margin: 0 !important;
     padding: 2mm !important;
 
-    border: 0.25mm solid #cbd5e1 !important;
+    margin: 0 !important;
 
+    border: 0.25mm solid #cbd5e1 !important;
     border-radius: 2mm !important;
 
-    background: white !important;
+    background: #fff !important;
 
     overflow: hidden !important;
 
@@ -193,36 +203,46 @@
     break-inside: avoid !important;
   }
 
+  /* ---------------------------------------------------------
+     EMPTY SLOTS
+     --------------------------------------------------------- */
 
-  /* -------------------------------------------------------
-     QR
-     ------------------------------------------------------- */
+  .qr-print-empty {
+    visibility: hidden !important;
+    border: none !important;
+  }
+
+  /* ---------------------------------------------------------
+     QR IMAGE
+     
+     48mm leaves room for code/title/author.
+     --------------------------------------------------------- */
 
   .qr-print-image {
     display: block !important;
 
-    width: 46mm !important;
-    height: 46mm !important;
+    width: 45mm !important;
+    height: 45mm !important;
 
-    max-width: 46mm !important;
-    max-height: 46mm !important;
+    min-width: 45mm !important;
+    min-height: 45mm !important;
+
+    max-width: 45mm !important;
+    max-height: 45mm !important;
 
     object-fit: contain !important;
 
     margin: 0 auto 1mm auto !important;
 
-    flex-shrink: 0 !important;
+    flex: 0 0 45mm !important;
   }
 
-
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      COPY CODE
-     ------------------------------------------------------- */
+     --------------------------------------------------------- */
 
   .qr-print-code {
     width: 100% !important;
-
-    height: 4mm !important;
 
     margin: 0 !important;
 
@@ -234,27 +254,21 @@
       monospace !important;
 
     font-size: 8px !important;
-
-    line-height: 4mm !important;
+    line-height: 9px !important;
 
     font-weight: 700 !important;
 
     color: #111827 !important;
 
     white-space: nowrap !important;
-
-    overflow: hidden !important;
   }
 
-
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      BOOK TITLE
-     ------------------------------------------------------- */
+     --------------------------------------------------------- */
 
   .qr-print-title {
     width: 100% !important;
-
-    height: 4mm !important;
 
     margin: 0.5mm 0 0 0 !important;
 
@@ -266,8 +280,7 @@
       sans-serif !important;
 
     font-size: 6.5px !important;
-
-    line-height: 4mm !important;
+    line-height: 8px !important;
 
     font-weight: 600 !important;
 
@@ -276,21 +289,17 @@
     white-space: nowrap !important;
 
     overflow: hidden !important;
-
     text-overflow: ellipsis !important;
   }
 
-
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      AUTHOR
-     ------------------------------------------------------- */
+     --------------------------------------------------------- */
 
   .qr-print-author {
     width: 100% !important;
 
-    height: 3mm !important;
-
-    margin: 0.2mm 0 0 0 !important;
+    margin: 0.3mm 0 0 0 !important;
 
     text-align: center !important;
 
@@ -300,22 +309,19 @@
       sans-serif !important;
 
     font-size: 5.5px !important;
-
-    line-height: 3mm !important;
+    line-height: 7px !important;
 
     color: #374151 !important;
 
     white-space: nowrap !important;
 
     overflow: hidden !important;
-
     text-overflow: ellipsis !important;
   }
 
-
-  /* -------------------------------------------------------
-     NEVER SPLIT
-     ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     SAFETY
+     --------------------------------------------------------- */
 
   .qr-print-page,
   .qr-print-grid,
