@@ -7,6 +7,7 @@ import { LEVEL_LABELS, coverStyle } from '@/lib/constants';
 import { BookSpine } from '@/components/BookSpine';
 import { CopyActions } from '@/components/CopyActions';
 import { useToast } from '@/components/Toast';
+import { supabase } from '@/lib/supabase';
 
 export function CopyDetailPage({ code }: { code: string }) {
   const { navigate } = useRouter();
@@ -23,18 +24,61 @@ export function CopyDetailPage({ code }: { code: string }) {
 
   const [loading, setLoading] = useState(true);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  /*
+   * Check whether the current visitor is logged in.
+   *
+   * QR visitors are normally anonymous.
+   * The admin is authenticated through Supabase.
+   */
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkAuth() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (mounted) {
+        setIsAdmin(!!session);
+      }
+    }
+
+    checkAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setIsAdmin(!!session);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
 
     try {
-      // IMPORTANT:
-      // QR scanner gives unique_code such as CC-00001.
-      // Therefore we MUST use fetchCopyByCode(), not fetchCopyById().
+      /*
+       * QR code contains the unique code, for example:
+       * CC-00001
+       */
       const c = await fetchCopyByCode(code);
 
       setCopy(c);
 
-      if (c) {
+      /*
+       * Only load movement history for the admin.
+       *
+       * Public QR visitors don't need this data.
+       */
+      if (c && isAdmin) {
         const movements = await fetchMovements(c.id);
         setHistory(movements);
       } else {
@@ -48,7 +92,7 @@ export function CopyDetailPage({ code }: { code: string }) {
     } finally {
       setLoading(false);
     }
-  }, [code, toast]);
+  }, [code, toast, isAdmin]);
 
   useEffect(() => {
     load();
@@ -99,16 +143,23 @@ export function CopyDetailPage({ code }: { code: string }) {
 
   return (
     <div className="mx-auto max-w-md space-y-5">
-      {/* Back */}
+
+      {/* =====================================================
+          BACK BUTTON
+          ===================================================== */}
+
       <button
-        onClick={() => navigate('/books')}
+        onClick={() => navigate(isAdmin ? '/books' : '/')}
         className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800"
       >
         <ArrowLeft size={18} />
         Back
       </button>
 
-      {/* Book info */}
+      {/* =====================================================
+          BOOK INFO
+          ===================================================== */}
+
       <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5">
         <BookSpine book={book} size="lg" />
 
@@ -137,9 +188,13 @@ export function CopyDetailPage({ code }: { code: string }) {
         </div>
       </div>
 
-      {/* Copy info */}
+      {/* =====================================================
+          COPY INFORMATION
+          ===================================================== */}
+
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="mb-4 grid grid-cols-2 gap-4">
+
           {/* Copy ID */}
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-400">
@@ -193,24 +248,32 @@ export function CopyDetailPage({ code }: { code: string }) {
           )}
         </div>
 
-        {/* Copy actions */}
-        <CopyActions
-          copy={{
-            ...copy,
-            book: {
-              title: book.title,
-              author: book.author,
-              price: Number(book.price),
-            },
-            location: location || null,
-          }}
-          locations={locations}
-          onChanged={load}
-        />
+        {/* =================================================
+            ADMIN ONLY ACTIONS
+            ================================================= */}
+
+        {isAdmin && (
+          <CopyActions
+            copy={{
+              ...copy,
+              book: {
+                title: book.title,
+                author: book.author,
+                price: Number(book.price),
+              },
+              location: location || null,
+            }}
+            locations={locations}
+            onChanged={load}
+          />
+        )}
       </div>
 
-      {/* History */}
-      {history.length > 0 && (
+      {/* =====================================================
+          ADMIN ONLY LOCATION HISTORY
+          ===================================================== */}
+
+      {isAdmin && history.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 font-semibold text-slate-900">
             Location History
@@ -238,6 +301,16 @@ export function CopyDetailPage({ code }: { code: string }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          PUBLIC VISITOR MESSAGE
+          ===================================================== */}
+
+      {!isAdmin && (
+        <div className="rounded-xl bg-slate-50 px-4 py-3 text-center text-xs text-slate-400">
+          Book information
         </div>
       )}
     </div>
