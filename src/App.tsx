@@ -12,6 +12,7 @@ import { ScanPage } from '@/pages/ScanPage';
 import { LocationsPage } from '@/pages/LocationsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { PrintQrCodesPage } from '@/pages/PrintQrCodesPage';
 import { LoginPage } from '@/pages/LoginPage';
 
 import { fetchBook } from '@/lib/queries';
@@ -66,6 +67,14 @@ function Routes() {
 
   if (path === '/settings') {
     return <SettingsPage />;
+  }
+
+  /* -------------------------------------------------------
+     PRINT QR CODES
+     ------------------------------------------------------- */
+
+  if (path === '/print-qr') {
+    return <PrintQrCodesPage />;
   }
 
   /* -------------------------------------------------------
@@ -195,6 +204,10 @@ function AdminArea() {
     };
   }, []);
 
+  /* -------------------------------------------------------
+     CHECKING AUTH
+     ------------------------------------------------------- */
+
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -205,9 +218,17 @@ function AdminArea() {
     );
   }
 
+  /* -------------------------------------------------------
+     NOT LOGGED IN
+     ------------------------------------------------------- */
+
   if (!authenticated) {
     return <LoginPage />;
   }
+
+  /* -------------------------------------------------------
+     AUTHENTICATED ADMIN
+     ------------------------------------------------------- */
 
   return (
     <AppShell>
