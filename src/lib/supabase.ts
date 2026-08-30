@@ -4,9 +4,19 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase env vars. Check .env file for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  console.error(
+    'Missing Supabase env vars. Check .env file for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-});
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
