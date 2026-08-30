@@ -12,8 +12,11 @@ import { ScanPage } from '@/pages/ScanPage';
 import { LocationsPage } from '@/pages/LocationsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { LoginPage } from '@/pages/LoginPage';
 
 import { fetchBook } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
+
 import { useEffect, useState } from 'react';
 
 import type { BookWithTags } from '@/lib/types';
@@ -25,12 +28,18 @@ import type { BookWithTags } from '@/lib/types';
 function Routes() {
   const { path } = useRouter();
 
-  /* Dashboard */
+  /* -------------------------------------------------------
+     DASHBOARD
+     ------------------------------------------------------- */
+
   if (path === '/' || path === '') {
     return <DashboardPage />;
   }
 
-  /* Main admin pages */
+  /* -------------------------------------------------------
+     MAIN ADMIN PAGES
+     ------------------------------------------------------- */
+
   if (path === '/books') {
     return <BooksPage />;
   }
@@ -59,14 +68,20 @@ function Routes() {
     return <SettingsPage />;
   }
 
-  /* Book detail */
+  /* -------------------------------------------------------
+     BOOK DETAIL
+     ------------------------------------------------------- */
+
   const bookMatch = path.match(/^\/book\/(.+)$/);
 
   if (bookMatch) {
     return <BookDetailPage bookId={bookMatch[1]} />;
   }
 
-  /* Public QR copy page */
+  /* -------------------------------------------------------
+     PUBLIC QR COPY PAGE
+     ------------------------------------------------------- */
+
   const copyMatch = path.match(/^\/copy\/(.+)$/);
 
   if (copyMatch) {
@@ -77,7 +92,10 @@ function Routes() {
     );
   }
 
-  /* Edit book */
+  /* -------------------------------------------------------
+     EDIT BOOK
+     ------------------------------------------------------- */
+
   const editMatch = path.match(/^\/edit\/(.+)$/);
 
   if (editMatch) {
@@ -88,7 +106,10 @@ function Routes() {
     );
   }
 
-  /* Unknown route */
+  /* -------------------------------------------------------
+     UNKNOWN ROUTE
+     ------------------------------------------------------- */
+
   return <DashboardPage />;
 }
 
@@ -134,19 +155,82 @@ function EditBookLoader({
 }
 
 /* =========================================================
-   ROUTER CONTENT
+   AUTHENTICATED ADMIN AREA
+   ========================================================= */
+
+function AdminArea() {
+  const [checking, setChecking] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkAuth() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      setAuthenticated(!!session);
+      setChecking(false);
+    }
+
+    checkAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
+
+        setAuthenticated(!!session);
+        setChecking(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-sm text-slate-400">
+          Checking login…
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <AppShell>
+      <Routes />
+    </AppShell>
+  );
+}
+
+/* =========================================================
+   PUBLIC / ADMIN ROUTER
    ========================================================= */
 
 function AppContent() {
   const { path } = useRouter();
 
   /*
-   * QR CODE PAGES ARE PUBLIC.
+   * QR COPY PAGES ARE PUBLIC.
    *
    * Example:
-   * /copy/CC-00001
    *
-   * These pages intentionally bypass AppShell.
+   * #/copy/CC-00001
+   *
+   * These pages bypass AdminArea and AppShell.
    */
 
   const isPublicCopyPage =
@@ -156,12 +240,11 @@ function AppContent() {
     return <Routes />;
   }
 
-  /* Everything else uses the admin shell */
-  return (
-    <AppShell>
-      <Routes />
-    </AppShell>
-  );
+  /*
+   * Everything else requires authentication.
+   */
+
+  return <AdminArea />;
 }
 
 /* =========================================================
