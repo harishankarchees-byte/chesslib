@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+
 import { fetchCopyByCode, fetchMovements } from '@/lib/queries';
 import { useLocations } from '@/hooks/useLocations';
 import { useRouter } from '@/lib/router';
@@ -12,7 +13,6 @@ import { supabase } from '@/lib/supabase';
 export function CopyDetailPage({ code }: { code: string }) {
   const { navigate } = useRouter();
   const { toast } = useToast();
-  const { locations } = useLocations();
 
   const [copy, setCopy] = useState<
     Awaited<ReturnType<typeof fetchCopyByCode>> | null
@@ -23,15 +23,17 @@ export function CopyDetailPage({ code }: { code: string }) {
   >([]);
 
   const [loading, setLoading] = useState(true);
-
   const [isAdmin, setIsAdmin] = useState(false);
 
   /*
-   * Check whether the current visitor is logged in.
-   *
-   * QR visitors are normally anonymous.
-   * The admin is authenticated through Supabase.
+   * Admin locations are only needed when the visitor is authenticated.
    */
+  const { locations } = useLocations();
+
+  /* =========================================================
+     CHECK ADMIN LOGIN
+     ========================================================= */
+
   useEffect(() => {
     let mounted = true;
 
@@ -61,12 +63,16 @@ export function CopyDetailPage({ code }: { code: string }) {
     };
   }, []);
 
+  /* =========================================================
+     LOAD COPY
+     ========================================================= */
+
   const load = useCallback(async () => {
     setLoading(true);
 
     try {
       /*
-       * QR code contains the unique code, for example:
+       * QR code contains unique_code, for example:
        * CC-00001
        */
       const c = await fetchCopyByCode(code);
@@ -74,9 +80,7 @@ export function CopyDetailPage({ code }: { code: string }) {
       setCopy(c);
 
       /*
-       * Only load movement history for the admin.
-       *
-       * Public QR visitors don't need this data.
+       * History is private to admin.
        */
       if (c && isAdmin) {
         const movements = await fetchMovements(c.id);
@@ -86,8 +90,10 @@ export function CopyDetailPage({ code }: { code: string }) {
       }
     } catch (error) {
       console.error('Failed to load copy:', error);
+
       setCopy(null);
       setHistory([]);
+
       toast('Failed to load copy');
     } finally {
       setLoading(false);
@@ -98,6 +104,10 @@ export function CopyDetailPage({ code }: { code: string }) {
     load();
   }, [load]);
 
+  /* =========================================================
+     LOADING
+     ========================================================= */
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-slate-400">
@@ -105,6 +115,10 @@ export function CopyDetailPage({ code }: { code: string }) {
       </div>
     );
   }
+
+  /* =========================================================
+     COPY NOT FOUND
+     ========================================================= */
 
   if (!copy) {
     return (
@@ -121,6 +135,10 @@ export function CopyDetailPage({ code }: { code: string }) {
     );
   }
 
+  /* =========================================================
+     BOOK DATA
+     ========================================================= */
+
   const book = copy.book as {
     id: string;
     title: string;
@@ -128,6 +146,7 @@ export function CopyDetailPage({ code }: { code: string }) {
     price: number;
     level: string;
     cover_color: string | null;
+    notes?: string | null;
   };
 
   const location = (
@@ -157,102 +176,138 @@ export function CopyDetailPage({ code }: { code: string }) {
       </button>
 
       {/* =====================================================
-          BOOK INFO
-          ===================================================== */}
-
-      <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5">
-        <BookSpine book={book} size="lg" />
-
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight text-slate-900">
-            {book.title}
-          </h1>
-
-          {book.author && (
-            <p className="text-sm text-slate-500">
-              {book.author}
-            </p>
-          )}
-
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-              {LEVEL_LABELS[book.level]}
-            </span>
-
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${style.bg}`}
-            >
-              ₹{Number(book.price).toLocaleString('en-IN')}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================
-          COPY INFORMATION
+          BOOK INFORMATION
+          PUBLIC + ADMIN
           ===================================================== */}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-4 grid grid-cols-2 gap-4">
 
-          {/* Copy ID */}
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-              Copy ID
-            </div>
+        <div className="flex items-center gap-4">
 
-            <div className="font-mono text-lg font-bold text-slate-900">
-              {copy.unique_code}
-            </div>
-          </div>
+          <BookSpine book={book} size="lg" />
 
-          {/* Status */}
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-              Status
-            </div>
+          <div className="min-w-0 flex-1">
 
-            <div
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold ${
-                copy.status === 'available'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-rose-50 text-rose-700'
-              }`}
-            >
-              {copy.status === 'available' ? 'Available' : 'Sold'}
-            </div>
-          </div>
+            <h1 className="text-xl font-bold leading-tight text-slate-900">
+              {book.title}
+            </h1>
 
-          {/* Location */}
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-              Location
-            </div>
+            {book.author && (
+              <p className="text-sm text-slate-500">
+                {book.author}
+              </p>
+            )}
 
-            <div className="text-sm font-semibold text-slate-800">
-              {location?.name || '—'}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                {LEVEL_LABELS[book.level]}
+              </span>
+
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${style.bg}`}
+              >
+                ₹{Number(book.price).toLocaleString('en-IN')}
+              </span>
+
             </div>
           </div>
-
-          {/* Sold price */}
-          {copy.status === 'sold' && copy.sold_price != null && (
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-400">
-                Sold Price
-              </div>
-
-              <div className="text-sm font-semibold text-rose-700">
-                ₹{Number(copy.sold_price).toLocaleString('en-IN')}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* =================================================
-            ADMIN ONLY ACTIONS
+            BOOK INFORMATION / NOTES
             ================================================= */}
 
-        {isAdmin && (
+        {book.notes && (
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Book Information
+            </div>
+
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+              {book.notes}
+            </p>
+          </div>
+        )}
+
+      </div>
+
+      {/* =====================================================
+          PUBLIC SOLD PRICE
+          Only shown when the copy is sold.
+          ===================================================== */}
+
+      {copy.status === 'sold' && copy.sold_price != null && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
+          <div className="text-xs uppercase tracking-wide text-slate-400">
+            Sold Price
+          </div>
+
+          <div className="mt-1 text-lg font-bold text-rose-700">
+            ₹{Number(copy.sold_price).toLocaleString('en-IN')}
+          </div>
+
+        </div>
+      )}
+
+      {/* =====================================================
+          ADMIN-ONLY COPY INFORMATION
+          ===================================================== */}
+
+      {isAdmin && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
+          <div className="mb-4 grid grid-cols-2 gap-4">
+
+            {/* Copy ID */}
+
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-400">
+                Copy ID
+              </div>
+
+              <div className="font-mono text-lg font-bold text-slate-900">
+                {copy.unique_code}
+              </div>
+            </div>
+
+            {/* Status */}
+
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-400">
+                Status
+              </div>
+
+              <div
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold ${
+                  copy.status === 'available'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-rose-50 text-rose-700'
+                }`}
+              >
+                {copy.status === 'available' ? 'Available' : 'Sold'}
+              </div>
+            </div>
+
+            {/* Location */}
+
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-400">
+                Location
+              </div>
+
+              <div className="text-sm font-semibold text-slate-800">
+                {location?.name || '—'}
+              </div>
+            </div>
+
+          </div>
+
+          {/* =================================================
+              ADMIN ACTIONS
+              ================================================= */}
+
           <CopyActions
             copy={{
               ...copy,
@@ -266,20 +321,23 @@ export function CopyDetailPage({ code }: { code: string }) {
             locations={locations}
             onChanged={load}
           />
-        )}
-      </div>
+
+        </div>
+      )}
 
       {/* =====================================================
-          ADMIN ONLY LOCATION HISTORY
+          ADMIN-ONLY LOCATION HISTORY
           ===================================================== */}
 
       {isAdmin && history.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
           <h2 className="mb-3 font-semibold text-slate-900">
             Location History
           </h2>
 
           <div className="space-y-2">
+
             {history.map((m) => (
               <div
                 key={m.id}
@@ -300,12 +358,13 @@ export function CopyDetailPage({ code }: { code: string }) {
                 </span>
               </div>
             ))}
+
           </div>
         </div>
       )}
 
       {/* =====================================================
-          PUBLIC VISITOR MESSAGE
+          PUBLIC MESSAGE
           ===================================================== */}
 
       {!isAdmin && (
@@ -313,6 +372,7 @@ export function CopyDetailPage({ code }: { code: string }) {
           Book information
         </div>
       )}
+
     </div>
   );
 }
