@@ -19,11 +19,11 @@ export function LoginPage() {
       password,
     });
 
-    if (error) {
-      setError('Invalid email or password.');
-      setLoading(false);
-      return;
-    }
+  if (error) {
+  console.error('Supabase login error:', error);
+  setError(`${error.message} (${error.code ?? error.status ?? 'unknown'})`);
+  return;
+}
 
     // Reload so the router picks up the authenticated session.
     window.location.hash = '#/';
