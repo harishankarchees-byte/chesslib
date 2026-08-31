@@ -14,7 +14,6 @@
 }
 
 @media print {
-
   /* =======================================================
      A4 PAPER
      ======================================================= */
@@ -46,10 +45,6 @@
 
   /* =======================================================
      PRINT CONTAINER
-
-     IMPORTANT:
-     No position: fixed.
-     No forced A4 height here.
      ======================================================= */
 
   .qr-print-container {
@@ -59,6 +54,7 @@
     position: static !important;
 
     width: 210mm !important;
+
     margin: 0 !important;
     padding: 0 !important;
 
@@ -70,20 +66,16 @@
   }
 
   /* =======================================================
-     ONE PRINT SECTION
-
+     PRINT PAGE
+     
      IMPORTANT:
-     DO NOT set height: 297mm.
-     DO NOT set min-height: 297mm.
-     DO NOT set max-height: 297mm.
-
-     The browser's @page handles the A4 sheet.
+     Do not give this element a 297mm height.
      ======================================================= */
 
   .qr-print-page {
     display: block !important;
 
-    position: relative !important;
+    position: static !important;
 
     width: 210mm !important;
 
@@ -94,35 +86,26 @@
 
     background: #ffffff !important;
 
-    overflow: hidden !important;
+    overflow: visible !important;
 
     /*
-     * Only force the NEXT print section onto
-     * the next sheet.
+     * Each .qr-print-page is one physical page.
      */
-    page-break-before: auto !important;
-    page-break-after: always !important;
+    break-inside: avoid !important;
     page-break-inside: avoid !important;
 
-    break-before: auto !important;
     break-after: page !important;
-    break-inside: avoid !important;
+    page-break-after: always !important;
   }
 
   /*
-   * First section starts normally.
+   * IMPORTANT:
+   * Never create a page break after the final page.
    */
-  .qr-print-page:first-child {
-    page-break-before: auto !important;
-    break-before: auto !important;
-  }
 
-  /*
-   * Last section does not create another page.
-   */
   .qr-print-page:last-child {
-    page-break-after: auto !important;
     break-after: auto !important;
+    page-break-after: auto !important;
   }
 
   /* =======================================================
@@ -149,6 +132,7 @@
       sans-serif !important;
 
     font-size: 12px !important;
+
     line-height: 8mm !important;
 
     font-weight: 700 !important;
@@ -159,18 +143,14 @@
   }
 
   /* =======================================================
+     QR GRID
+     
      3 COLUMNS × 4 ROWS
+     12 LABELS
      ======================================================= */
 
   .qr-print-grid {
     width: 194mm !important;
-
-    /*
-     * 4 × 57mm = 228mm
-     * 3 × 3mm gaps = 9mm
-     * Total = 237mm
-     */
-    height: 237mm !important;
 
     display: grid !important;
 
@@ -188,21 +168,20 @@
     margin: 0 !important;
     padding: 0 !important;
 
-    page-break-before: auto !important;
-    page-break-after: auto !important;
-    page-break-inside: avoid !important;
-
-    break-before: auto !important;
-    break-after: auto !important;
+    /*
+     * Do not force a page break here.
+     */
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   /* =======================================================
-     INDIVIDUAL LABEL
+     INDIVIDUAL QR LABEL
      ======================================================= */
 
   .qr-print-label {
     width: 100% !important;
+
     height: 57mm !important;
 
     min-width: 0 !important;
@@ -214,28 +193,27 @@
     box-sizing: border-box !important;
 
     display: flex !important;
+
     flex-direction: column !important;
 
     align-items: center !important;
+
     justify-content: flex-start !important;
 
     padding: 2mm !important;
+
     margin: 0 !important;
 
     border: 0.25mm solid #cbd5e1 !important;
+
     border-radius: 2mm !important;
 
     background: #ffffff !important;
 
     overflow: hidden !important;
 
-    page-break-before: auto !important;
-    page-break-after: auto !important;
-    page-break-inside: avoid !important;
-
-    break-before: auto !important;
-    break-after: auto !important;
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   /* =======================================================
@@ -279,6 +257,7 @@
       monospace !important;
 
     font-size: 8px !important;
+
     line-height: 9px !important;
 
     font-weight: 700 !important;
@@ -308,6 +287,7 @@
       sans-serif !important;
 
     font-size: 6.5px !important;
+
     line-height: 8px !important;
 
     font-weight: 600 !important;
@@ -339,6 +319,7 @@
       sans-serif !important;
 
     font-size: 5.5px !important;
+
     line-height: 7px !important;
 
     color: #374151 !important;
@@ -348,16 +329,5 @@
     overflow: hidden !important;
 
     text-overflow: ellipsis !important;
-  }
-
-  /* =======================================================
-     FINAL PRINT SAFETY
-     ======================================================= */
-
-  .qr-print-page,
-  .qr-print-grid,
-  .qr-print-label {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
   }
 }
